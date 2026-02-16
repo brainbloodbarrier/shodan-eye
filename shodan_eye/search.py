@@ -1,20 +1,30 @@
 """Core search functionality — search, host lookup, stats."""
 
 from .formatter import format_result
+from .api import PLAN_LIMITS
+
+# Dev plan: each search_cursor page costs 1 query credit and returns up to 100
+# results. With 100 credits/month, default to conservative limits.
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 100  # 1 page = 1 credit; keep searches to 1 credit by default
 
 
-def search(client, query, limit=100, on_progress=None):
+def search(client, query, limit=None, on_progress=None):
     """Search Shodan and return formatted results.
 
     Args:
         client: shodan.Shodan instance
         query: Shodan search query string
-        limit: Maximum results to return (default 100)
+        limit: Maximum results to return (default 20, max 100 per credit)
         on_progress: Optional callback(count, result) called per result
 
     Returns:
         List of formatted result dicts.
     """
+    if limit is None:
+        limit = DEFAULT_LIMIT
+    limit = min(limit, MAX_LIMIT)
+
     results = []
     for i, banner in enumerate(client.search_cursor(query)):
         if i >= limit:
