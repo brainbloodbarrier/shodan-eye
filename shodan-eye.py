@@ -112,7 +112,7 @@ def logger(data):
     file.close()
 
 
-if data.startswith("y" or "Y"):
+if data.lower().startswith("y"):
     l0g = input("\n[~] \033[34mGive the file a name: \033[0m ")
     print ("\n" + "  " + "»" * 78 + "\n")
     logger(data)
@@ -179,7 +179,7 @@ def showdam():
     except shodan.APIError as oeps:
             print ("[✘] \033[1;31mError: %s \033[0m" % (oeps))
             sha_api = input("[*] \033[34mWould you like to change the API Key? <Y/N>:\033[0m ").lower()
-            if sha_api.startswith("y" or "Y"):
+            if sha_api.startswith("y"):
                 file = open("api.txt", "w")
                 os.system("stty -echo")
                 shodan_api_key = input("[✓] \033[34mPlease enter valid Shodan.io API Key:\033[0m ")
