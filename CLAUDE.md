@@ -4,56 +4,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Shodan Eye is a Python CLI tool that queries the Shodan API to collect information about internet-connected devices matching user-specified keywords. It displays IP, port, organization, location, transport layer, domains, hostnames, and banner data for each result.
+Shodan Eye is a modular Python library for Shodan reconnaissance, designed to be orchestrated by Claude Code. The Python backend is non-interactive (no `input()`/`print()`) — it returns structured data that Claude Code presents to the user.
+
+**Two repos:**
+- **This repo** (`shodan-eye`) — Python library + OpenSpec artifacts
+- **`shodan-cc`** — Claude Code deployment workspace with CLAUDE.md, settings, and skills
 
 ## Running
 
 ```bash
 pip3 install -r requirements.txt   # sole dependency: shodan
+
+# Library usage:
+python3 -c "from shodan_eye import search, create_client, load_dorks"
+
+# Legacy interactive mode (backward compatible):
 python3 shodan-eye.py
 ```
 
-The tool is interactive — it prompts for: whether to save output to a file, and a search keyword. There are no command-line arguments.
+## Package Structure
+
+```
+shodan_eye/
+├── __init__.py      # Public API exports
+├── api.py           # Client creation, key resolution (env var > file), account info
+├── search.py        # search(), host_info(), search_stats()
+├── formatter.py     # format_result(), export_json/txt/jsonl, color constants
+├── dorks.py         # load_dorks(), list_categories(), search_dorks()
+└── legacy.py        # Interactive wrapper preserving original UX
+```
 
 ## API Key Handling
 
-Resolution order:
+Resolution order (in `api.resolve_api_key()`):
 1. `SHODAN_API_KEY` environment variable (preferred)
 2. `./api.txt` file (if it exists and is non-empty)
-3. Interactive prompt via `getpass.getpass()` (key is then saved to `./api.txt`)
+3. Returns `None` — caller decides how to handle
 
-The `api.txt` file is gitignored. If authentication fails, the user is prompted to replace the key via `getpass` (input hidden cross-platform). The retry logic is a `while True` loop in `run()` — on failure, the user can enter a new key or decline to exit.
+The `api.txt` file is gitignored. Key validation uses `api.info()` (free endpoint) instead of a test search.
 
-## Architecture
+## Key Design Decisions
 
-Single-file application (`shodan-eye.py`, ~220 lines). No module structure, no tests, no linting configuration.
-
-Key functions:
-- `run()` — main entry point, handles user interaction, search loop, and logging
-- `get_api_key()` — resolves API key from env var, file, or user prompt
-
-Key flow:
-1. Display a random ASCII banner
-2. Ask user about file output (with filename validation: alphanumeric, underscores, hyphens only)
-3. Resolve API key via `get_api_key()`
-4. Validate the key with a test query (`api.search("b00m")`)
-5. Use `api.search_cursor()` to iterate results up to a hardcoded limit of 888
-6. Print results to console and optionally write to a log file (opened once, closed in `finally`)
+- **No interactive I/O in library**: All functions in `shodan_eye/` accept arguments and return dicts/lists. Only `legacy.py` uses `input()`/`print()`.
+- **Progress via callbacks**: `search()` accepts `on_progress=callback(count, result)` — the caller decides how to display progress.
+- **Formatted output by default**: `format_result()` converts raw Shodan banners to clean dicts (Location as "City, Country", lists as comma-joined strings).
+- **Color constants**: `RED`, `BLUE`, `BOLD`, `RESET` defined in `formatter.py` — no raw escape codes elsewhere.
 
 ## Style Conventions
 
-- ANSI color codes used throughout for terminal styling (red: `\033[1;31m`, blue: `\033[34m`)
 - f-strings for all string formatting
-- `with` statements for API key file I/O; log file uses `open()`/`close()` with `finally`
-- `getpass.getpass()` for hidden input
+- `with` statements for all file I/O (except log file in legacy.py which uses try/finally)
+- `getpass.getpass()` for hidden input (legacy mode only)
+- Functions return data, don't print it (except legacy.py)
 
 ## Files
 
-- `shodan-eye.py` — the entire application
+- `shodan-eye.py` — thin legacy entry point
+- `shodan_eye/` — the library package (see structure above)
 - `requirements.txt` — single dependency (`shodan`)
-- `Shodan_Dorks_The_Internet_of_Sh*t.txt` — collection of example Shodan search queries/dorks
+- `Shodan_Dorks_The_Internet_of_Sh*t.txt` — dorks database (parsed by `dorks.py`)
 - `.gitignore` — excludes `api.txt`, `*.pyc`, `__pycache__/`
-- `LICENSE` — GPL v3
-- `README.md` — install/usage instructions and project links
-- `img/` — screenshot assets for the README
-- `api.txt` — created at runtime to store the Shodan API key (not in repo)
+- `openspec/` — OpenSpec change artifacts (proposal, specs, design, tasks)
