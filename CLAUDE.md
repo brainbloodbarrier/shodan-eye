@@ -19,9 +19,10 @@ The tool is interactive — it prompts for: whether to save output to a file, an
 
 Resolution order:
 1. `SHODAN_API_KEY` environment variable (preferred)
-2. `./api.txt` file (created on first run if env var is not set)
+2. `./api.txt` file (if it exists and is non-empty)
+3. Interactive prompt via `getpass.getpass()` (key is then saved to `./api.txt`)
 
-The `api.txt` file is gitignored. If authentication fails, the user is prompted to replace the key via `getpass` (input hidden cross-platform). The API key retry logic uses a `while True` loop — on failure, the user can enter a new key and the loop re-attempts authentication.
+The `api.txt` file is gitignored. If authentication fails, the user is prompted to replace the key via `getpass` (input hidden cross-platform). The retry logic is a `while True` loop in `run()` — on failure, the user can enter a new key or decline to exit.
 
 ## Architecture
 
@@ -43,7 +44,7 @@ Key flow:
 
 - ANSI color codes used throughout for terminal styling (red: `\033[1;31m`, blue: `\033[34m`)
 - f-strings for all string formatting
-- `with` statements for all file I/O
+- `with` statements for API key file I/O; log file uses `open()`/`close()` with `finally`
 - `getpass.getpass()` for hidden input
 
 ## Files
@@ -52,4 +53,7 @@ Key flow:
 - `requirements.txt` — single dependency (`shodan`)
 - `Shodan_Dorks_The_Internet_of_Sh*t.txt` — collection of example Shodan search queries/dorks
 - `.gitignore` — excludes `api.txt`, `*.pyc`, `__pycache__/`
+- `LICENSE` — GPL v3
+- `README.md` — install/usage instructions and project links
+- `img/` — screenshot assets for the README
 - `api.txt` — created at runtime to store the Shodan API key (not in repo)
